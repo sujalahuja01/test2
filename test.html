@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Full API Tester</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+      }
+      input,
+      button,
+      textarea {
+        display: block;
+        margin: 10px 0;
+        width: 300px;
+      }
+      pre {
+        background: #f4f4f4;
+        padding: 10px;
+        border: 1px solid #ccc;
+      }
+      section {
+        border: 1px solid #ccc;
+        padding: 15px;
+        margin: 20px 0;
+      }
+      #errorMessage {
+        color: red;
+        font-weight: bold;
+        margin: 20px 0;
+        padding: 10px;
+        border: 1px solid red;
+        background-color: #ffe6e6;
+        display: none; /* hidden by default */
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Test Auth + Recipe Routes</h1>
+    <div id="errorMessage"></div>
+    <!-- AUTH SECTION -->
+    <section>
+      <h2>Signup</h2>
+      <input id="signup-username" placeholder="Username" />
+      <input id="signup-email" type="email" placeholder="email" />
+      <input id="signup-password" type="password" placeholder="Password" />
+      <button onclick="signup()">Signup</button>
+      <pre id="signupResult"></pre>
+
+      <h2>Google signup</h2>
+      <button onclick="gsign()">google signup</button>
+
+      <h2>Login</h2>
+      <input id="login-username" placeholder="Username" />
+      <input id="login-password" type="password" placeholder="Password" />
+      <button onclick="login()">Login</button>
+      <pre id="loginResult"></pre>
+
+      <h2>Logout</h2>
+      <button onclick="logout()">Logout</button>
+      <pre id="logoutResult"></pre>
+
+      <h2>Session Status</h2>
+      <button onclick="checkSession()">Check</button>
+      <pre id="sessionResult"></pre>
+
+      <h2>change password</h2>
+      <label for="oldPassword">Old Password:</label>
+      <input type="password" id="oldPassword" placeholder="Enter password" />
+      <button type="button" class="toggle-btn" data-target="oldPassword">
+        Show
+      </button>
+
+      <label for="newPassword">New Password:</label>
+      <input type="password" id="newPassword" placeholder="Enter password" />
+      <button type="button" class="toggle-btn" data-target="newPassword">
+        Show
+      </button>
+
+      <label for="confirmPassword">Confirm Password:</label>
+      <input
+        type="password"
+        id="confirmPassword"
+        placeholder="Enter password"
+      />
+      <button type="button" class="toggle-btn" data-target="confirmPassword">
+        Show</button
+      ><br />
+      <button onclick="changePass()">Change password</button>
+      <pre id="changeResult"></pre>
+
+      <h2>Forgot Password</h2>
+      <input type="text" id="reset-pass" placeholder="Enter your email" />
+      <button onclick="resetPass()">Reset password</button>
+      <pre id="forgotResult"></pre>
+
+      <h2>Reset Your Password</h2>
+      <input type="password" id="newPass" placeholder="Enter new password" />
+      <button onclick="confirmReset()">Reset</button>
+      <pre id="resetResult"></pre>
+
+      <h2>Delete Account</h2>
+      <button onclick="deleteAcc()">Delete Account</button>
+      <pre id="deleteResult"></pre>
+    </section>
+
+    <!-- RECIPE SECTION -->
+    <section>
+      <h2>Generate Recipe</h2>
+      <input
+        type="text"
+        id="ingredients"
+        placeholder="e.g., tomato, onion, garlic"
+      />
+      <input type="text" id="cuisine" placeholder="e.g., Indian (optional)" />
+      <button onclick="generateRecipe()">Generate</button>
+      <pre id="generateResult"></pre>
+
+      <button onclick="saveRecipe()" id="saveBtn" style="display: none">
+        Save Recipe
+      </button>
+      <pre id="saveResult"></pre>
+
+      <h2>Refresh Recipe</h2>
+      <button onclick="refreshRecipe()">Refresh</button>
+      <pre id="refreshResult"></pre>
+
+      <button onclick="saveRecipe()" id="saveBtn" style="display: none">
+        Save Recipe
+      </button>
+      <pre id="saveResult"></pre>
+
+      <h2>Get Favourites</h2>
+      <button onclick="getFavourites()">Get All</button>
+      <pre id="favouritesList"></pre>
+
+      <h2>Delete Favourite</h2>
+      <input id="deleteId" placeholder="Enter Recipe ID" />
+      <button onclick="deleteFavourite()">Delete</button>
+      <pre id="deleteRecipe"></pre>
+    </section>
+
+    <script>
+      //   function togglePassword() {
+      //   const passwordInput = document.getElementById("passwordInput");
+      //   const btn = event.target;
+
+      //   if (passwordInput.type === "password") {
+      //     passwordInput.type = "text";
+      //     btn.textContent = "Hide";
+      //   } else {
+      //     passwordInput.type = "password";
+      //     btn.textContent = "Show";
+      //   }
+      // }
+
+      document.querySelectorAll(".toggle-btn").forEach((button) => {
+        button.addEventListener("click", () => {
+          const targetId = button.getAttribute("data-target");
+          const input = document.getElementById(targetId);
+
+          if (!input) return;
+
+          if (input.type === "password") {
+            input.type = "text";
+            button.textContent = "Hide";
+          } else {
+            input.type = "password";
+            button.textContent = "Show";
+          }
+        });
+      });
+
+      let generatedRecipe = null;
+      const baseURL = "http://127.0.0.1:5000";
+
+      const fetchOptions = (method, body = null) => ({
+        method,
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: body ? JSON.stringify(body) : null,
+      });
+
+      function gsign() {
+        window.location.href = `${baseURL}/auth/google-login`;
+      }
+
+      function signup() {
+        fetch(
+          `${baseURL}/auth/signup`,
+          fetchOptions("POST", {
+            username: document.getElementById("signup-username").value,
+            email: document.getElementById("signup-email").value,
+            password: document.getElementById("signup-password").value,
+          })
+        )
+          .then((res) => res.json())
+          .then(
+            (data) =>
+              (document.getElementById("signupResult").textContent =
+                JSON.stringify(data, null, 2))
+          );
+      }
+
+      function login() {
+        fetch(
+          `${baseURL}/auth/login`,
+          fetchOptions("POST", {
+            identifier: document.getElementById("login-username").value,
+            password: document.getElementById("login-password").value,
+          })
+        )
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.google_login) {
+              gsign();
+            } else {
+              document.getElementById("loginResult").textContent =
+                JSON.stringify(data, null, 2);
+            }
+          });
+      }
+
+      function logout() {
+        fetch(`${baseURL}/auth/logout`, fetchOptions("POST"))
+          .then((res) => res.json())
+          .then(
+            (data) =>
+              (document.getElementById("logoutResult").textContent =
+                JSON.stringify(data, null, 2))
+          );
+      }
+
+      function checkSession() {
+        fetch(`${baseURL}/auth/user`, fetchOptions("GET"))
+          .then((res) => res.json())
+          .then(
+            (data) =>
+              (document.getElementById("sessionResult").textContent =
+                JSON.stringify(data, null, 2))
+          );
+      }
+
+      function changePass() {
+        (current_pass = document.getElementById("oldPassword")?.value.trim()),
+          (new_pass = document.getElementById("newPassword")?.value.trim()),
+          (confirm_pass = document
+            .getElementById("confirmPassword")
+            ?.value.trim());
+
+        if (!new_pass || !confirm_pass) {
+          document.getElementById("changeResult").textContent =
+            "Missing New or Confirm password";
+          return;
+        }
+
+        if (new_pass !== confirm_pass) {
+          document.getElementById("changeResult").textContent =
+            " New and Confirm password does not match ";
+          return;
+        }
+
+        fetch(`${baseURL}/auth/user`, fetchOptions("GET"))
+          .then((res) => res.json())
+          .then((data) => {
+            if (!data.success || !data.user) {
+              document.getElementById("changeResult").textContent =
+                "User info unavailable, please log-in.";
+              return;
+            }
+            const googleLogin = data.user.google_login;
+
+            if (googleLogin) {
+              fetch(
+                `${baseURL}/auth/change_password`,
+                fetchOptions("POST", {
+                  new_password: new_pass,
+                  confirm_password: confirm_pass,
+                })
+              )
+                .then((res) => res.json())
+                .then((data) => {
+                  document.getElementById("changeResult").textContent =
+                    JSON.stringify(data, null, 2);
+                });
+            } else {
+              if (!current_pass) {
+                document.getElementById("changeResult").textContent =
+                  "Missing Current password";
+                return;
+              } else {
+                fetch(
+                  `${baseURL}/auth/change_password`,
+                  fetchOptions("POST", {
+                    current_password: current_pass,
+                    new_password: new_pass,
+                    confirm_password: confirm_pass,
+                  })
+                )
+                  .then((res) => res.json())
+                  .then((data) => {
+                    document.getElementById("changeResult").textContent =
+                      JSON.stringify(data, null, 2);
+                  });
+              }
+            }
+          });
+      }
+
+      function resetPass() {
+        const email = document.getElementById("reset-pass")?.value.trim();
+
+        if (!email) {
+          document.getElementById("resetResult").textContent =
+            "Email is required";
+          return;
+        }
+
+        fetch(
+          `${baseURL}/auth/forgot_password`,
+          fetchOptions("POST", {
+            email: email,
+          })
+        )
+          .then((res) => res.json())
+          .then((data) => {
+            document.getElementById("forgotResult").textContent =
+              JSON.stringify(data, null, 2);
+          });
+      }
+
+      function confirmReset() {
+        const newPass = document.getElementById("newPass")?.value.trim();
+
+        if (!newPass) {
+          document.getElementById("resetResult").textContent =
+            "Password is required";
+          return;
+        }
+
+        // get token from query string
+        const params = new URLSearchParams(window.location.search);
+        const token = params.get("token");
+
+        fetch(
+          `${baseURL}/auth/reset_password/${token}`,
+          fetchOptions("POST", { password: newPass })
+        )
+          .then((res) => res.json())
+          .then((data) => {
+            document.getElementById("resetResult").textContent = JSON.stringify(
+              data,
+              null,
+              2
+            );
+          });
+      }
+
+      function deleteAcc() {
+        fetch(`${baseURL}/auth/user`, fetchOptions("GET"))
+          .then((res) => res.json())
+          .then((data) => {
+            if (!data.success || !data.user) {
+              document.getElementById("deleteResult").textContent =
+                "User info unavailable, please log-in.";
+              return;
+            }
+            const googleLogin = data.user.google_login;
+
+            let text = "Are you sure you want to delete you account?";
+            if (confirm(text)) {
+              if (googleLogin) {
+                if (
+                  confirm(
+                    "All of your saved data will be deleted. confirm your deletion again"
+                  )
+                ) {
+                  fetch(`${baseURL}/auth/delete`, fetchOptions("DELETE", {}))
+                    .then((res) => res.json())
+                    .then((data) => {
+                      document.getElementById("deleteResult").textContent =
+                        JSON.stringify(data, null, 2);
+                    });
+                } else {
+                  document.getElementById("deleteResult").textContent =
+                    "Second confirmation cancelled. Account deletion aborted";
+                }
+              } else {
+                let userPass = null;
+                while (true) {
+                  userPass = prompt("Enter your password");
+                  if (userPass === null) {
+                    document.getElementById("deleteResult").textContent =
+                      "Password input cancelled. Account deletion aborted.";
+                    return;
+                  }
+                  if (userPass.trim() === "") {
+                    alert(
+                      "Password cannot be empty. Please enter your password"
+                    );
+                  } else {
+                    break;
+                  }
+                }
+                if (userPass) {
+                  fetch(
+                    `${baseURL}/auth/delete`,
+                    fetchOptions("DELETE", {
+                      password: userPass,
+                    })
+                  )
+                    .then((res) => res.json())
+                    .then((data) => {
+                      document.getElementById("deleteResult").textContent =
+                        JSON.stringify(data, null, 2);
+                    });
+                }
+              }
+            } else {
+              document.getElementById("deleteResult").textContent =
+                "You made the right choice";
+              return;
+            }
+          });
+      }
+
+      function generateRecipe() {
+        const ingredientStr = document.getElementById("ingredients").value;
+        fetch(
+          `${baseURL}/recipes/generate`,
+          fetchOptions("POST", {
+            ingredients: ingredientStr
+              .split(",")
+              .map((i) => i.trim())
+              .filter((i) => i),
+            cuisine: document.getElementById("cuisine").value,
+          })
+        )
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.success) {
+              generatedRecipe = data.recipe;
+              document.getElementById("generateResult").textContent =
+                JSON.stringify(generatedRecipe, null, 2);
+              document.getElementById("saveBtn").style.display = "inline-block";
+            } else {
+              alert("Failed to generate recipe: " + data.error);
+            }
+          });
+      }
+
+      function refreshRecipe() {
+        fetch(`${baseURL}/recipes/refresh`, fetchOptions("POST"))
+          .then((res) => res.json())
+          .then(
+            (data) =>
+              (document.getElementById("refreshResult").textContent =
+                JSON.stringify(data, null, 2))
+          );
+      }
+
+      function saveRecipe() {
+        if (!generatedRecipe) {
+          alert("No recipe to save");
+          return;
+        }
+        fetch(
+          `${baseURL}/recipes/save`,
+          fetchOptions("POST", { recipe: generatedRecipe })
+        )
+          .then((res) => res.json())
+          .then(
+            (data) =>
+              (document.getElementById("saveResult").textContent =
+                JSON.stringify(data, null, 2))
+          );
+      }
+
+      function getFavourites() {
+        fetch(`${baseURL}/recipes/favourite`, fetchOptions("GET"))
+          .then((res) => res.json())
+          .then((data) => {
+            document.getElementById("favouritesList").textContent =
+              JSON.stringify(data, null, 2);
+          });
+      }
+
+      function deleteFavourite() {
+        const id = document.getElementById("deleteId").value;
+        fetch(`${baseURL}/recipes/favourite/${id}`, fetchOptions("DELETE"))
+          .then((res) => res.json())
+          .then(
+            (data) =>
+              (document.getElementById("deleteRecipe").textContent =
+                JSON.stringify(data, null, 2))
+          );
+      }
+
+      // Parse query parameters into an object
+      function getQueryParams() {
+        const params = {};
+        location.search
+          .substring(1)
+          .split("&")
+          .forEach((pairRaw) => {
+            if (!pairRaw) return;
+            const pair = pairRaw.split("=");
+            const key = decodeURIComponent(pair[0]);
+            const value = decodeURIComponent(pair[1] || "");
+            params[key] = value;
+          });
+        return params;
+      }
+
+      // Show error message if 'error=oauth_failed' is present in URL
+      window.addEventListener("DOMContentLoaded", () => {
+        const params = getQueryParams();
+        if (params.error === "oauth_failed") {
+          const message =
+            params.message || "OAuth authorization failed. Please try again.";
+          const errorDiv = document.getElementById("errorMessage");
+          errorDiv.textContent = `Error: ${message}`;
+          errorDiv.style.display = "block"; // show the error container
+        }
+      });
+    </script>
+  </body>
+</html>
+
+<!-- 
+{
+  "at_hash": "xZtAxHHrJT2BUt3NBGjNmA",
+  "aud": "836192233158-1u56rv0vgjmm2vookrgg1a93b6sn5r0t.apps.googleusercontent.com",
+  "azp": "836192233158-1u56rv0vgjmm2vookrgg1a93b6sn5r0t.apps.googleusercontent.com",
+  "email": "sujalahuja.sa@gmail.com",
+  "email_verified": true,
+  "exp": 1753708401,
+  "family_name": "Ahuja",
+  "given_name": "Sujal",
+  "iat": 1753704801,
+  "iss": "https://accounts.google.com",
+  "name": "Sujal Ahuja",
+  "nonce": "9N3eVyyrrUklOZ1pX0CH",
+  "picture": "https://lh3.googleusercontent.com/a/ACg8ocIgbvg3urevIRf-6hxCmVbVhhuuRO2G1IbMTbWPdOzqEx0ZsdMS=s96-c",
+  "sub": "107552645270632913939"
+} -->
